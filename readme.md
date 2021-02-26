@@ -5,6 +5,7 @@
 ```sh
 npm i -g yarn
 yarn install
+yarn gen_csv
 yarn start
 
 ## open another shell, same dir
