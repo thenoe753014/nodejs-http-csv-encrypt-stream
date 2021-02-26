@@ -1,0 +1,10 @@
+{
+  "scripts": {
+    "gen_csv": "node gen_csv.js > test.csv",
+    "start": "node index.js",
+    "test": "curl -X POST -H \"content-type: text/csv\" --data-binary @./test.csv -o output.txt http://localhost:3000"
+  },
+  "dependencies": {
+    "split2": "^3.2.2"
+  }
+}
