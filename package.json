@@ -2,9 +2,14 @@
   "scripts": {
     "gen_csv": "node gen_csv.js > test.csv",
     "start": "node index.js",
-    "test": "curl -X POST -H \"content-type: text/csv\" --data-binary @./test.csv -o output.txt http://localhost:3000"
+    "test1": "curl -X POST -H \"content-type: text/csv\" --data-binary @./test.csv   -o output.txt    http://localhost:3000",
+    "test2": "curl -X POST -H \"content-type: text/csv\" --data-binary @./output.txt -o decrypted.csv http://localhost:3001",
+    "format": "prettier --write ."
   },
   "dependencies": {
     "split2": "^3.2.2"
+  },
+  "devDependencies": {
+    "prettier": "^2.2.1"
   }
 }

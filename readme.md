@@ -3,13 +3,20 @@
 ## Steps
 
 ```sh
+## install yarn and deps
 npm i -g yarn
 yarn install
+
+## generate test.csv
 yarn gen_csv
+
+## ignite http server
 yarn start
 
 ## open another shell, same dir
-yarn test
+## test1 is encryption, test2 is decryption
+yarn test1
+yarn test2
 ```
 
 ## Default test csv

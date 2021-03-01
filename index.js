@@ -11,7 +11,7 @@ const salt = Buffer.from("我的天啊");
 const key = crypto.scryptSync(password, salt, 16);
 const iv = Buffer.alloc(16, 0);
 
-const f = () => {
+const f1 = () => {
   let first_line = true;
 
   return new Transform({
@@ -36,8 +36,33 @@ const f = () => {
   });
 };
 
-const server = http.createServer((req, res) => {
-  console.time("req time");
+const f2 = () => {
+  let first_line = true;
+
+  return new Transform({
+    transform(chunk, encoding, callback) {
+      const decipher = crypto.createDecipheriv(algorithm, key, iv);
+
+      if (first_line === true) {
+        first_line = false;
+        return callback(null, chunk);
+      }
+
+      const line = chunk
+        .toString()
+        .split(",")
+        .map((v) => decipher.update(v, "base64").toString("utf8"))
+        .join(",");
+
+      decipher.final();
+
+      callback(null, line);
+    },
+  });
+};
+
+const server1 = http.createServer((req, res) => {
+  console.time("encrypt req time");
 
   let i = 0;
 
@@ -45,7 +70,7 @@ const server = http.createServer((req, res) => {
 
   req
     .pipe(split2())
-    .pipe(f())
+    .pipe(f1())
     .on("data", (chunk) => {
       i++;
       res.write(chunk);
@@ -53,9 +78,33 @@ const server = http.createServer((req, res) => {
     })
     .on("end", () => {
       res.end();
-      console.timeEnd("req time");
+      console.timeEnd("encrypt req time");
       console.log("lines:", i);
     });
 });
 
-server.listen(3000);
+server1.listen(3000);
+
+const server2 = http.createServer((req, res) => {
+  console.time("decrypt req time");
+
+  let i = 0;
+
+  req.setEncoding("utf8");
+
+  req
+    .pipe(split2())
+    .pipe(f2())
+    .on("data", (chunk) => {
+      i++;
+      res.write(chunk);
+      res.write("\r\n");
+    })
+    .on("end", () => {
+      res.end();
+      console.timeEnd("decrypt req time");
+      console.log("lines:", i);
+    });
+});
+
+server2.listen(3001);
