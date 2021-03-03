@@ -3,7 +3,7 @@ const crypto = require("crypto");
 const { Transform } = require("stream");
 
 const split2 = require("split2");
-
+const Vertica = require("vertica");
 const algorithm = "aes-128-ctr";
 const password = Buffer.from("fstk1234");
 const salt = Buffer.from("我的天啊");
@@ -11,10 +11,16 @@ const salt = Buffer.from("我的天啊");
 const key = crypto.scryptSync(password, salt, 16);
 const iv = Buffer.alloc(16, 0);
 
+const config = {
+  host: "127.0.0.1",
+  user: "dbadmin",
+  password: "noel123",
+  database: "docker",
+};
+
 const f1 = () => {
   let first_line = true;
-
-  return new Transform({
+  return Transform({
     transform(chunk, encoding, callback) {
       const cipher = crypto.createCipheriv(algorithm, key, iv);
 
@@ -26,7 +32,10 @@ const f1 = () => {
       const line = chunk
         .toString()
         .split(",")
-        .map((v) => cipher.update(v, "utf8").toString("base64"))
+        .map(
+          (v) =>
+            `HEX_TO_BINARY('0x${cipher.update(v, "utf8").toString("hex")}')`
+        )
         .join(",");
 
       cipher.final();
@@ -51,7 +60,11 @@ const f2 = () => {
       const line = chunk
         .toString()
         .split(",")
-        .map((v) => decipher.update(v, "base64").toString("utf8"))
+        .map((v) => {
+          const c = decipher.update(v, "base64").toString("utf8");
+          console.log(v);
+          return c;
+        })
         .join(",");
 
       decipher.final();
@@ -68,15 +81,39 @@ const server1 = http.createServer((req, res) => {
 
   req.setEncoding("utf8");
 
+  let data = [];
   req
     .pipe(split2())
     .pipe(f1())
     .on("data", (chunk) => {
       i++;
-      res.write(chunk);
-      res.write("\r\n");
+
+      const sql = `INSERT INTO poc.poc_encrypted_test (name, email, address, job, company, ssn, phone, birthdate, bio, license_plate, card1, card2, card3, card4) VALUES (${chunk})`;
+      data.push(sql);
     })
     .on("end", () => {
+      data.splice(0, 1);
+      data = data.join(";");
+
+      res.write(`${data}; COMMIT;`);
+      res.write("\r\n");
+
+      try {
+        conn = Vertica.connect(config, (err, conn) => {
+          if (err) {
+            console.log("error: \n" + err);
+          } else {
+            conn.query(`${data}; COMMIT;`, (err, result) => {
+              if (err) console.log("VSQL" + err);
+              console.log(result);
+            });
+            conn.disconnect();
+          }
+        });
+      } catch (error) {
+        console.log("Error has been caught");
+        console.log(error);
+      }
       res.end();
       console.timeEnd("encrypt req time");
       console.log("lines:", i);
