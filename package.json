@@ -2,7 +2,7 @@
   "scripts": {
     "gen_csv": "node gen_csv.js > test.csv",
     "start": "node index.js",
-    "test1": "curl -X POST -H \"content-type: text/csv\" --data-binary @./data_min.csv http://localhost:3000",
+    "test1": "curl -X POST -H \"content-type: text/csv\" --data-binary @./clnt_fake_data.csv http://localhost:3000",
     "test2": "curl -X POST -H \"content-type: text/csv\" --data-binary @./output.txt -o decrypted.csv http://localhost:3001",
     "format": "prettier --write ."
   },

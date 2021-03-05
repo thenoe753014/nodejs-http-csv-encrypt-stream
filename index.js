@@ -32,10 +32,7 @@ const f1 = () => {
       const line = chunk
         .toString()
         .split(",")
-        .map(
-          (v) =>
-            `HEX_TO_BINARY('0x${cipher.update(v, "utf8").toString("hex")}')`
-        )
+        .map((v) => `'${cipher.update(v, "utf8").toString("hex")}'`)
         .join(",");
 
       cipher.final();
@@ -74,9 +71,47 @@ const f2 = () => {
   });
 };
 
+function connectVerticaDB(config) {
+  try {
+    console.log("Connected to DATABASE");
+    return Vertica.connect(config);
+  } catch (err) {
+    console.log("conn failure");
+    return err;
+  }
+}
+
+async function queryFromVerticaDB(sql) {
+  const conn = connectVerticaDB(config);
+  console.time("query from verticaDB time");
+
+  conn.query(sql, (err, result) => {
+    if (err) console.log("VSQL" + err);
+    console.log(result);
+    console.timeEnd("query from verticaDB time");
+    conn.disconnect();
+  });
+
+  // const query = conn.query(`${sql};`);
+  // query.on('fields', function(fields) {
+  //   return console.log("Fields:", fields);
+  // });
+  // query.on('row', function(row) {
+  //   return console.log(row);
+  // });
+  // query.on('end', function(status) {
+  //   conn.disconnect();
+  //   return console.log("Finished!", status);
+  // });
+  // query.on('error', function(err) {
+  //   return console.log("Uh oh!", err);
+  // });
+}
+
 const server1 = http.createServer((req, res) => {
   console.time("encrypt req time");
 
+  // const conn = connectVerticaDB(config);
   let i = 0;
 
   req.setEncoding("utf8");
@@ -88,32 +123,20 @@ const server1 = http.createServer((req, res) => {
     .on("data", (chunk) => {
       i++;
 
-      const sql = `INSERT INTO poc.poc_encrypted_test (name, email, address, job, company, ssn, phone, birthdate, bio, license_plate, card1, card2, card3, card4) VALUES (${chunk})`;
+      const sql = `SELECT ${chunk}`;
       data.push(sql);
     })
-    .on("end", () => {
+    .on("end", async () => {
       data.splice(0, 1);
-      data = data.join(";");
+      data = data.join(" UNION ALL ");
 
-      res.write(`${data}; COMMIT;`);
+      const sql = `INSERT INTO poc.clnt_encrypted (client_id, id_ind, names, sex, birth_date, hometown, occupation_code, marriage, education,remit_bank,remit_branch,remit_account,transfer_bank,transfer_account,card_bank,credit_card_no,sign_ptn_card,risk_suit_seq,fatca_ind) with subtable as (${data}) select * from subtable;COMMIT;`;
+
+      res.write(sql);
       res.write("\r\n");
 
-      try {
-        conn = Vertica.connect(config, (err, conn) => {
-          if (err) {
-            console.log("error: \n" + err);
-          } else {
-            conn.query(`${data}; COMMIT;`, (err, result) => {
-              if (err) console.log("VSQL" + err);
-              console.log(result);
-            });
-            conn.disconnect();
-          }
-        });
-      } catch (error) {
-        console.log("Error has been caught");
-        console.log(error);
-      }
+      await queryFromVerticaDB(sql);
+
       res.end();
       console.timeEnd("encrypt req time");
       console.log("lines:", i);

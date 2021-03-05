@@ -28,10 +28,10 @@ function connectVerticaDB(config) {
 
 async function decryption(config) {
   const conn = await connectVerticaDB(config);
-  let de_insert_data = "";
+  let de_insert_data = [];
 
   conn.query(
-    `SELECT TO_HEX(name), TO_HEX(email), TO_HEX(address), TO_HEX(job), TO_HEX(company), TO_HEX(ssn), TO_HEX(phone), TO_HEX(birthdate), TO_HEX(bio), TO_HEX(license_plate), TO_HEX(card1), TO_HEX(card2), TO_HEX(card3), TO_HEX(card4) FROM poc.poc_encrypted_test LIMIT 2`,
+    `SELECT client_id,id_ind,names,sex,birth_date,hometown,occupation_code,marriage,education,remit_bank,remit_branch,remit_account,transfer_bank,transfer_account,card_bank,credit_card_no,sign_ptn_card,risk_suit_seq,fatca_ind FROM poc.clnt_encrypted LIMIT 10`,
     (err, result) => {
       if (err) console.log("VSQL" + err);
 
@@ -44,9 +44,14 @@ async function decryption(config) {
           .map((v) => `'${decipher.update(v, "hex").toString("utf8")}'`)
           .join(",");
         decipher.final();
-        de_insert_data += `INSERT INTO poc.poc_decrypted_test (name, email, address, job, company, ssn, phone, birthdate, bio, license_plate, card1, card2, card3, card4) VALUES (${line});`;
+        de_insert_data.push(`SELECT ${line}`);
       }
-      conn.query(`${de_insert_data}; COMMIT;`, (err, result) => {
+      de_insert_data = de_insert_data.join(" UNION ALL ");
+
+      const sql = `INSERT INTO poc.clnt_decrypted (client_id, id_ind, names, sex, birth_date, hometown, occupation_code, marriage, education,remit_bank,remit_branch,remit_account,transfer_bank,transfer_account,card_bank,credit_card_no,sign_ptn_card,risk_suit_seq,fatca_ind) ${de_insert_data};COMMIT;`;
+      console.log(sql);
+
+      conn.query(sql, (err, result) => {
         if (err) console.log("VSQL" + err);
         console.log(result);
       });
